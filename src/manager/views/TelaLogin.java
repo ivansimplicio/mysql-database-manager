@@ -1,22 +1,29 @@
 package manager.views;
 
+import java.sql.SQLException;
 import manager.database.Connection;
-import javax.swing.JOptionPane;
 import manager.database.DatabaseManager;
 import manager.enums.SystemMessages;
+import manager.system.PreferencesManager;
 import manager.views.dialog.Dialog;
+import manager.views.dialog.OptionPane;
+import org.apache.log4j.PropertyConfigurator;
 
 public class TelaLogin extends javax.swing.JFrame {
-    public static final String DEFAULT_HOST = "127.0.0.1:3306";
-    public static final String DEFAULT_USER = "root";
+    
+    private PreferencesManager prefsManager = null;
     
     public TelaLogin() {
         initComponents();
+        prefsManager = PreferencesManager.getInstance();
         setLocationRelativeTo(null);
         setVisible(true);
         setResizable(false);
-        campo_ip.setText(DEFAULT_HOST);
-        campo_login.setText(DEFAULT_USER);
+        checkBox_salvarInformacoes.setSelected(false);
+        campo_ip.setText(prefsManager.getHost());
+        campo_bd.setText(prefsManager.getDatabase());
+        campo_login.setText(prefsManager.getUsername());
+        campo_senha.setText(prefsManager.getPassword());
     }
 
     @SuppressWarnings("unchecked")
@@ -34,6 +41,7 @@ public class TelaLogin extends javax.swing.JFrame {
         botao_entrar = new javax.swing.JButton();
         botao_sair = new javax.swing.JButton();
         campo_senha = new javax.swing.JPasswordField();
+        checkBox_salvarInformacoes = new javax.swing.JCheckBox();
         menuBar = new javax.swing.JMenuBar();
         menu_Sobre = new javax.swing.JMenu();
 
@@ -62,6 +70,8 @@ public class TelaLogin extends javax.swing.JFrame {
             }
         });
 
+        checkBox_salvarInformacoes.setText("Salvar Informações");
+
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
@@ -72,24 +82,27 @@ public class TelaLogin extends javax.swing.JFrame {
                         .addGap(18, 18, 18)
                         .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                             .addGroup(jPanel1Layout.createSequentialGroup()
-                                .addComponent(texto_senha)
-                                .addGap(64, 64, 64)
-                                .addComponent(campo_senha, javax.swing.GroupLayout.DEFAULT_SIZE, 277, Short.MAX_VALUE))
-                            .addGroup(jPanel1Layout.createSequentialGroup()
                                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                                     .addComponent(texto_bd)
                                     .addComponent(texto_ip)
                                     .addComponent(texto_login))
                                 .addGap(18, 18, 18)
                                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                    .addComponent(campo_login)
                                     .addComponent(campo_bd, javax.swing.GroupLayout.DEFAULT_SIZE, 277, Short.MAX_VALUE)
-                                    .addComponent(campo_ip, javax.swing.GroupLayout.DEFAULT_SIZE, 277, Short.MAX_VALUE)))))
+                                    .addComponent(campo_ip, javax.swing.GroupLayout.DEFAULT_SIZE, 277, Short.MAX_VALUE)
+                                    .addComponent(campo_login)))
+                            .addGroup(jPanel1Layout.createSequentialGroup()
+                                .addComponent(texto_senha)
+                                .addGap(64, 64, 64)
+                                .addComponent(campo_senha))))
                     .addGroup(jPanel1Layout.createSequentialGroup()
                         .addGap(72, 72, 72)
                         .addComponent(botao_entrar, javax.swing.GroupLayout.PREFERRED_SIZE, 95, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(67, 67, 67)
-                        .addComponent(botao_sair, javax.swing.GroupLayout.PREFERRED_SIZE, 95, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addGap(70, 70, 70)
+                        .addComponent(botao_sair, javax.swing.GroupLayout.PREFERRED_SIZE, 95, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addGap(141, 141, 141)
+                        .addComponent(checkBox_salvarInformacoes)))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         jPanel1Layout.setVerticalGroup(
@@ -111,14 +124,16 @@ public class TelaLogin extends javax.swing.JFrame {
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(campo_senha, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(texto_senha))
-                .addGap(30, 30, 30)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(checkBox_salvarInformacoes)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(botao_entrar)
                     .addComponent(botao_sair))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
-        menu_Sobre.setIcon(new javax.swing.ImageIcon(getClass().getResource("/manager/icons/information.png"))); // NOI18N
+        menu_Sobre.setIcon(new javax.swing.ImageIcon(getClass().getResource("/resources/icons/information-bold.png"))); // NOI18N
         menu_Sobre.setText("Sobre");
         menu_Sobre.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
@@ -149,19 +164,20 @@ public class TelaLogin extends javax.swing.JFrame {
 
     private void botao_entrarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_botao_entrarActionPerformed
         try{
-            Connection conexao = Connection.getInstance(campo_ip.getText(), campo_bd.getText(), campo_login.getText(), new String(campo_senha.getPassword()));
-            JOptionPane.showMessageDialog(null, "CONECTADO COM SUCESSO!", "Conectado!", JOptionPane.INFORMATION_MESSAGE);
-            new TelaPrincipal(DatabaseManager.getInstance(conexao));
+            Connection con = Connection.getInstance(campo_ip.getText(), campo_bd.getText(), campo_login.getText(), new String(campo_senha.getPassword()));
+            OptionPane.showInfoDialog("Conectado!", "CONECTADO COM SUCESSO!");
+            if(checkBox_salvarInformacoes.isSelected()){
+                prefsManager.saveLogin(campo_ip.getText(), campo_bd.getText(), campo_login.getText(), campo_senha.getText());
+            }
+            new TelaPrincipal(DatabaseManager.getInstance(con), prefsManager);
             dispose();
-        }catch(Exception e){
-            if(SystemMessages.infoSelectMessage(e.getMessage()) == 1){
+        }catch(SQLException e){
+            if(OptionPane.showSelectDialog(e.getMessage()) == 1){
                 Dialog dialog = new Dialog(this, true);
                 dialog.setLabelTitle(SystemMessages.LOGIN_ERROR.getTitle());
                 dialog.setLabelMessage(SystemMessages.LOGIN_ERROR.getMessage());
                 dialog.setVisible(true);
             }
-            campo_bd.setText("");
-            campo_senha.setText("");
         }
     }//GEN-LAST:event_botao_entrarActionPerformed
 
@@ -176,6 +192,9 @@ public class TelaLogin extends javax.swing.JFrame {
      * @param args the command line arguments
      */
     public static void main(String args[]) {
+        
+        PropertyConfigurator.configure("src/log4j.properties");
+        
         try {
             for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
                 if ("Windows".equals(info.getName())) {
@@ -202,6 +221,7 @@ public class TelaLogin extends javax.swing.JFrame {
     private javax.swing.JTextField campo_ip;
     private javax.swing.JTextField campo_login;
     private javax.swing.JPasswordField campo_senha;
+    private javax.swing.JCheckBox checkBox_salvarInformacoes;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JMenuBar menuBar;
     private javax.swing.JMenu menu_Sobre;

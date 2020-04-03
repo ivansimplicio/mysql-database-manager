@@ -1,23 +1,25 @@
 package manager.views;
 
+import java.io.IOException;
 import java.sql.SQLException;
 import java.util.List;
-import javax.swing.JOptionPane;
 import manager.database.DatabaseManager;
 import manager.controllers.TelaPrincipalController;
-import manager.system.Configuracoes;
+import manager.system.PreferencesManager;
 import manager.components.ComboBox;
 import manager.enums.SystemMessages;
 import manager.views.dialog.Dialog;
+import manager.views.dialog.OptionPane;
 
 public class TelaPrincipal extends javax.swing.JFrame {
     
-    private Configuracoes configs = null;
-    private TelaPrincipalController telaPrincipalController = null;
+    private PreferencesManager prefsManager;
+    private TelaPrincipalController controller = null;
     
-    public TelaPrincipal(DatabaseManager gerenciador) {
+    public TelaPrincipal(DatabaseManager manager, PreferencesManager prefsManager) {
         initComponents();
-        iniciaComponentes(gerenciador);
+        this.prefsManager = prefsManager;
+        startComponents(manager);
         setLocationRelativeTo(null);
         setResizable(false);
         setVisible(true);
@@ -27,12 +29,11 @@ public class TelaPrincipal extends javax.swing.JFrame {
         
     }
     
-    private void iniciaComponentes(DatabaseManager manager) {
-        configs = Configuracoes.getInstance();
-        telaPrincipalController = TelaPrincipalController.getInstance(manager);
-        label_schemaEmUso.setText("Schema em uso: "+telaPrincipalController.getCurrentDatabase());
-        List<String> schemas = telaPrincipalController.getDatabasesNames();
-        ComboBox.load(comboBox_schemas, schemas, true);
+    private void startComponents(DatabaseManager manager) {
+        controller = TelaPrincipalController.getInstance(manager);
+        setUsingDatabase(controller.getCurrentDatabase());
+        List<String> databases = controller.getDatabasesNames();
+        ComboBox.load(comboBox_schemas, databases, true);
     }
 
     @SuppressWarnings("unchecked")
@@ -53,9 +54,12 @@ public class TelaPrincipal extends javax.swing.JFrame {
         label_inserirComandos = new javax.swing.JLabel();
         label_schemaEmUso = new javax.swing.JLabel();
         menuBar = new javax.swing.JMenuBar();
+        menu_arquivo = new javax.swing.JMenu();
+        menuItem_salvar = new javax.swing.JMenuItem();
+        menuItem_abrir = new javax.swing.JMenuItem();
         menu_configuracoes = new javax.swing.JMenu();
-        menu_Sobre = new javax.swing.JMenu();
-        menu_Logout = new javax.swing.JMenu();
+        menu_sobre = new javax.swing.JMenu();
+        menu_logout = new javax.swing.JMenu();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("MySQL Database Manager");
@@ -169,7 +173,30 @@ public class TelaPrincipal extends javax.swing.JFrame {
                 .addContainerGap())
         );
 
-        menu_configuracoes.setIcon(new javax.swing.ImageIcon(getClass().getResource("/manager/icons/bullet_wrench.png"))); // NOI18N
+        menu_arquivo.setIcon(new javax.swing.ImageIcon(getClass().getResource("/resources/icons/files-bold.png"))); // NOI18N
+        menu_arquivo.setText("Arquivo");
+
+        menuItem_salvar.setIcon(new javax.swing.ImageIcon(getClass().getResource("/resources/icons/save-file-bold.png"))); // NOI18N
+        menuItem_salvar.setText("Salvar Query");
+        menuItem_salvar.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                menuItem_salvarActionPerformed(evt);
+            }
+        });
+        menu_arquivo.add(menuItem_salvar);
+
+        menuItem_abrir.setIcon(new javax.swing.ImageIcon(getClass().getResource("/resources/icons/open-file-bold.png"))); // NOI18N
+        menuItem_abrir.setText("Abrir Query");
+        menuItem_abrir.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                menuItem_abrirActionPerformed(evt);
+            }
+        });
+        menu_arquivo.add(menuItem_abrir);
+
+        menuBar.add(menu_arquivo);
+
+        menu_configuracoes.setIcon(new javax.swing.ImageIcon(getClass().getResource("/resources/icons/settings-bold.png"))); // NOI18N
         menu_configuracoes.setText("Configurações");
         menu_configuracoes.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
@@ -178,23 +205,23 @@ public class TelaPrincipal extends javax.swing.JFrame {
         });
         menuBar.add(menu_configuracoes);
 
-        menu_Sobre.setIcon(new javax.swing.ImageIcon(getClass().getResource("/manager/icons/information.png"))); // NOI18N
-        menu_Sobre.setText("Sobre");
-        menu_Sobre.addMouseListener(new java.awt.event.MouseAdapter() {
+        menu_sobre.setIcon(new javax.swing.ImageIcon(getClass().getResource("/resources/icons/information-bold.png"))); // NOI18N
+        menu_sobre.setText("Sobre");
+        menu_sobre.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
-                menu_SobreMouseClicked(evt);
+                menu_sobreMouseClicked(evt);
             }
         });
-        menuBar.add(menu_Sobre);
+        menuBar.add(menu_sobre);
 
-        menu_Logout.setIcon(new javax.swing.ImageIcon(getClass().getResource("/manager/icons/logout-button-16b.png"))); // NOI18N
-        menu_Logout.setText("Logout");
-        menu_Logout.addMouseListener(new java.awt.event.MouseAdapter() {
+        menu_logout.setIcon(new javax.swing.ImageIcon(getClass().getResource("/resources/icons/logout-bold.png"))); // NOI18N
+        menu_logout.setText("Logout");
+        menu_logout.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
-                menu_LogoutMouseClicked(evt);
+                menu_logoutMouseClicked(evt);
             }
         });
-        menuBar.add(menu_Logout);
+        menuBar.add(menu_logout);
 
         setJMenuBar(menuBar);
 
@@ -214,84 +241,112 @@ public class TelaPrincipal extends javax.swing.JFrame {
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
+    private void setUsingDatabase(String database){
+        label_schemaEmUso.setText("Database em uso: " + ((database != null) ? database : ""));
+    }
+    
     private void botao_submeterActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_botao_submeterActionPerformed
-        String comandoSQL = getTextArea_Texto();
-        if (!comandoSQL.trim().isEmpty()) {
-            if (configs.checkBox2Marked()) {
+        String query = area_texto.getText();
+        if (!query.trim().isEmpty()) {
+            if (prefsManager.isMultiQueries()) {
                 try {
-                    String result = telaPrincipalController.submeterMuitasInstrucoes(comandoSQL);
-                    JOptionPane.showMessageDialog(null, result, "INFORMAÇÕES SOBRE AS SUBMISSÕES", JOptionPane.INFORMATION_MESSAGE);
-                    if (configs.checkBox1Marked()) {
-                        limparAreaTexto();
+                    String result = controller.submitManyQueries(query);
+                    OptionPane.showInfoDialog("INFORMAÇÕES SOBRE AS SUBMISSÕES", result);
+                    if (prefsManager.isClearTextArea()) {
+                        clearTextArea();
                     }
                 } catch (SQLException e) {
-                    JOptionPane.showMessageDialog(null, e.getMessage(), "INFORMAÇÕES SOBRE AS SUBMISSÕES", JOptionPane.ERROR_MESSAGE);
+                    OptionPane.showErrorDialog("INFORMAÇÕES SOBRE AS SUBMISSÕES", e.getMessage());
                 }
             } else {
                 try {
-                    telaPrincipalController.submeterUmComando(comandoSQL);
-                    JOptionPane.showMessageDialog(null, "COMANDO SUBMETIDO!", "SUCESSO!", JOptionPane.INFORMATION_MESSAGE);
-                    if (configs.checkBox1Marked()) {
-                        limparAreaTexto();
+                    controller.submitQuery(query);
+                    OptionPane.showInfoDialog("SUCESSO!", "COMANDO SUBMETIDO!");
+                    if (prefsManager.isClearTextArea()) {
+                        clearTextArea();
                     }
                 } catch (SQLException e) {
-                    JOptionPane.showMessageDialog(null, e.getMessage(), "FALHA!", JOptionPane.ERROR_MESSAGE);
+                    OptionPane.showErrorDialog("FALHA!", e.getMessage());
                 }
             }
-            List<String> schemas = telaPrincipalController.getDatabasesNames();
-            ComboBox.load(comboBox_schemas, schemas, true);
+            List<String> databases = controller.getDatabasesNames();
+            ComboBox.load(comboBox_schemas, databases, true);
         } else {
-            JOptionPane.showMessageDialog(null, "NENHUM COMANDO INSERIDO!", "", JOptionPane.WARNING_MESSAGE);
+            OptionPane.showWarnDialog("", "NENHUM COMANDO INSERIDO!");
         }
-        label_schemaEmUso.setText("Schema em uso: " + telaPrincipalController.getCurrentDatabase());
+        setUsingDatabase(controller.getCurrentDatabase());
     }//GEN-LAST:event_botao_submeterActionPerformed
 
     private void botao_limparActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_botao_limparActionPerformed
-        limparAreaTexto();
+        clearTextArea();
     }//GEN-LAST:event_botao_limparActionPerformed
 
     private void botao_inserirActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_botao_inserirActionPerformed
-       area_texto.setText(configs.getComandoPadrao());
+       area_texto.setText(prefsManager.getStandardCommand());
     }//GEN-LAST:event_botao_inserirActionPerformed
 
     private void botao_verDadosActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_botao_verDadosActionPerformed
         try {
-            telaPrincipalController.verificarDados();
-            new TelaConsultas(telaPrincipalController.getDatabaseManager());
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(null, e.getMessage(), "", JOptionPane.ERROR_MESSAGE);
+            controller.validateDatabase();
+            new TelaConsultas(controller.getDatabaseManager());
+        } catch (SQLException e) {
+            OptionPane.showErrorDialog("", e.getMessage());
         }
     }//GEN-LAST:event_botao_verDadosActionPerformed
 
-    private void menu_LogoutMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_menu_LogoutMouseClicked
-        telaPrincipalController.encerrarConexao();
+    private void menu_logoutMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_menu_logoutMouseClicked
+        controller.close();
         new TelaLogin();
         dispose();
-    }//GEN-LAST:event_menu_LogoutMouseClicked
+    }//GEN-LAST:event_menu_logoutMouseClicked
 
     private void botao_usar_schemaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_botao_usar_schemaActionPerformed
         if (comboBox_schemas.getItemCount() == 1) {
-            JOptionPane.showMessageDialog(null, "NENHUM SCHEMA ENCONTRADO!", "ERRO", JOptionPane.ERROR_MESSAGE);
+            OptionPane.showErrorDialog("ERRO", "NENHUM BANCO DE DADOS ENCONTRADO!");
         } else if (comboBox_schemas.getSelectedItem() == "") {
-            JOptionPane.showMessageDialog(null, "SELECIONE UM SCHEMA!", "AVISO", JOptionPane.WARNING_MESSAGE);
+            OptionPane.showWarnDialog("AVISO", "SELECIONE UM BANCO DE DADOS!");
         } else {
-            String databaseUsing = (String) comboBox_schemas.getSelectedItem();
-            telaPrincipalController.useDatabase(databaseUsing);
-            label_schemaEmUso.setText("Schema em uso: " + databaseUsing);
-            JOptionPane.showMessageDialog(null, "SCHEMA EM USO: " + databaseUsing, "SCHEMA SELECIONADO", JOptionPane.INFORMATION_MESSAGE);
+            String selectedDatabase = (String) comboBox_schemas.getSelectedItem();
+            controller.useDatabase(selectedDatabase);
+            setUsingDatabase(selectedDatabase);
+            OptionPane.showInfoDialog("BANCO DE DADOS SELECIONADO", "USANDO: " + selectedDatabase);
         }
     }//GEN-LAST:event_botao_usar_schemaActionPerformed
 
     private void menu_configuracoesMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_menu_configuracoesMouseClicked
-        new TelaConfiguracoes(configs, telaPrincipalController.getCurrentUser());
+        new TelaConfiguracoes(prefsManager, controller.getCurrentUser());
     }//GEN-LAST:event_menu_configuracoesMouseClicked
 
-    private void menu_SobreMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_menu_SobreMouseClicked
+    private void menu_sobreMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_menu_sobreMouseClicked
         Dialog dialog = new Dialog(this, true);
         dialog.setLabelTitle(SystemMessages.SYSTEM_INFO.getTitle());
         dialog.setLabelMessage(SystemMessages.SYSTEM_INFO.getMessage());
         dialog.setVisible(true);
-    }//GEN-LAST:event_menu_SobreMouseClicked
+    }//GEN-LAST:event_menu_sobreMouseClicked
+
+    private void menuItem_salvarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_menuItem_salvarActionPerformed
+        try{
+            String resultPath = controller.saveFile(this, area_texto.getText());
+            if(!resultPath.isEmpty()){
+                String message = "Path: "+resultPath;
+                OptionPane.showInfoDialog("Arquivo criado", message);
+            }
+        }catch(IOException e){
+            OptionPane.showErrorDialog("ERRO", e.getMessage());
+        }
+    }//GEN-LAST:event_menuItem_salvarActionPerformed
+
+    private void menuItem_abrirActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_menuItem_abrirActionPerformed
+        try{
+            controller.openFile(this, area_texto);
+        }catch(IOException e){
+            OptionPane.showErrorDialog("ERRO", e.getMessage());
+        }
+    }//GEN-LAST:event_menuItem_abrirActionPerformed
+    
+    public void clearTextArea(){
+        area_texto.setText("");
+    }
     
     public static void main(String args[]) {
         try {
@@ -313,18 +368,6 @@ public class TelaPrincipal extends javax.swing.JFrame {
         });
     }
     
-    public String getTextArea_Texto(){
-        return area_texto.getText();
-    }
-    
-    public void setTextArea_Texto(String text){
-        area_texto.setText(area_texto.getText().concat(text));
-    }
-    
-    public void limparAreaTexto(){
-        area_texto.setText("");
-    }
-
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JTextArea area_texto;
     private javax.swing.JButton botao_inserir;
@@ -338,9 +381,12 @@ public class TelaPrincipal extends javax.swing.JFrame {
     private javax.swing.JLabel label_listaBancos;
     private javax.swing.JLabel label_schemaEmUso;
     private javax.swing.JMenuBar menuBar;
-    private javax.swing.JMenu menu_Logout;
-    private javax.swing.JMenu menu_Sobre;
+    private javax.swing.JMenuItem menuItem_abrir;
+    private javax.swing.JMenuItem menuItem_salvar;
+    private javax.swing.JMenu menu_arquivo;
     private javax.swing.JMenu menu_configuracoes;
+    private javax.swing.JMenu menu_logout;
+    private javax.swing.JMenu menu_sobre;
     private javax.swing.JPanel painelPrincipal;
     private javax.swing.JScrollPane scrollPanel;
     // End of variables declaration//GEN-END:variables

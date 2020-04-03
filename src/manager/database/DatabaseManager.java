@@ -5,8 +5,12 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import manager.util.Log;
+import org.apache.log4j.Logger;
 
 public class DatabaseManager {
+    
+    private static final Logger LOG = Logger.getLogger(DatabaseManager.class);
 
     private static DatabaseManager manager;
     private final Connection con;
@@ -22,11 +26,12 @@ public class DatabaseManager {
         return manager;
     }
 
-    public void fecharConexao() {
-        this.con.fecharConexao();
+    public void close() {
+        this.con.close();
         manager = null;
     }
-    public boolean inserirComando(String sql) {
+    
+    public boolean insertQuery(String sql) {
         try {
             PreparedStatement stmt = con.getConnection().prepareStatement(sql);
             stmt.execute();
@@ -37,62 +42,62 @@ public class DatabaseManager {
         }
     }
     
-    public ResultSet getResultSet(String comando) throws Exception {
+    public ResultSet getResultSet(String sql) throws SQLException {
         ResultSet rs = null;
         try {
-            PreparedStatement stmt = con.getConnection().prepareStatement(comando);
+            PreparedStatement stmt = con.getConnection().prepareStatement(sql);
             rs = stmt.executeQuery();
         } catch (SQLException e) {
-            throw new Exception("COMANDO INCORRETO!");
+            throw new SQLException("COMANDO INCORRETO!");
         }
         return rs;
     }
 
-    public List<String> getTablesNames() throws RuntimeException {
+    public List<String> getTablesNames() throws SQLException {
         String sql = "SHOW TABLES";
-        List<String> tabelas = new ArrayList<>();
+        List<String> tables = new ArrayList<>();
         try {
             ResultSet rs = this.getResultSet(sql);
             while (rs.next()) {
-                tabelas.add(rs.getString(1));
+                tables.add(rs.getString(1));
             }
-        } catch (Exception e) {
-            throw new RuntimeException("NENHUM BANCO DE DADOS ABERTO!");
+        } catch (SQLException e) {
+            throw new SQLException("NENHUM BANCO DE DADOS ABERTO!");
         }
-        if (tabelas.isEmpty()) {
-            throw new RuntimeException("O BANCO DE DADOS NÃO POSSUI TABELAS!");
+        if (tables.isEmpty()) {
+            throw new SQLException("O BANCO DE DADOS NÃO POSSUI TABELAS!");
         }
-        return tabelas;
+        return tables;
     }
 
-    public List<String> getExistingProcedures(String databaseUsing) {
-        String sql = String.format("SHOW PROCEDURE STATUS WHERE db = '%s'", databaseUsing);
+    public List<String> getProcedures(String database) {
+        String sql = String.format("SHOW PROCEDURE STATUS WHERE db = '%s'", database);
         List<String> procedures = new ArrayList<>();
         try {
             ResultSet rs = this.getResultSet(sql);
             while (rs.next()) {
                 procedures.add(rs.getString("Name"));
             }
-        } catch (Exception e) {
-            //adicionar no arquivo de log
-            throw new RuntimeException("ERRO! Path: Gerenciador.getExistingProcedures()");
+        } catch (SQLException e) {
+            String path = "manager.database.DatabaseManager.getProcedures(String)";
+            Log.saveErrorLog(LOG, e, path);
         }
         return procedures;
     }
 
     public List<String> getDatabasesNames() {
         String sql = "SHOW DATABASES";
-        List<String> schemas = new ArrayList<>();
+        List<String> databases = new ArrayList<>();
         try {
             ResultSet rs = this.getResultSet(sql);
             while (rs.next()) {
-                schemas.add(rs.getString(1));
+                databases.add(rs.getString(1));
             }
-        } catch (Exception e) {
-            //adicionar no arquivo de log
-            throw new RuntimeException("ERRO! Path: Gerenciador.getDatabasesNames()");
+        } catch (SQLException e) {
+            String path = "manager.database.DatabaseManager.getDatabasesNames()";
+            Log.saveErrorLog(LOG, e, path);
         }
-        return schemas;
+        return databases;
     }
 
     public String getCurrentDatabase() {
@@ -101,9 +106,9 @@ public class DatabaseManager {
             ResultSet rs = getResultSet("SELECT database()");
             rs.next();
             database = rs.getString(1);
-        } catch (Exception e) {
-            //adicionar no arquivo de log
-            throw new RuntimeException("ERRO! Path: Gerenciador.getCurrentDatabase()");
+        } catch (SQLException e) {
+            String path = "manager.database.DatabaseManager.getCurrentDatabase()";
+            Log.saveErrorLog(LOG, e, path);
         }
         return database;
     }
@@ -114,9 +119,9 @@ public class DatabaseManager {
             ResultSet rs = getResultSet("SELECT current_user()");
             rs.next();
             currentUser = rs.getString(1);
-        } catch (Exception e) {
-            //adicionar no arquivo de log
-            throw new RuntimeException("ERRO! Path: Gerenciador.getCurrentUser()");
+        } catch (SQLException e) {
+            String path = "manager.database.DatabaseManager.getCurrentUser()";
+            Log.saveErrorLog(LOG, e, path);
         }
         return currentUser;
     }

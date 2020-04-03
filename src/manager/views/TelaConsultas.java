@@ -1,24 +1,27 @@
 package manager.views;
 
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.List;
 import manager.controllers.TelaConsultasController;
 import manager.database.DatabaseManager;
 import manager.components.ComboBox;
 import manager.components.TableModel;
 import manager.enums.SystemMessages;
-import manager.enums.TipoConsulta;
+import manager.enums.QueryType;
 import manager.views.dialog.Dialog;
+import manager.views.dialog.OptionPane;
 
 public class TelaConsultas extends javax.swing.JFrame {
 
-    private TipoConsulta tipoConsulta;
-    private TelaConsultasController telaConsultasController;
+    private QueryType queryType;
+    private TelaConsultasController controller;
     
     public TelaConsultas(DatabaseManager manager) {
         initComponents();
-        telaConsultasController = TelaConsultasController.getInstance(manager);
-        iniciaComponentes();
+        queryType = QueryType.CONSULT_TABLES;
+        controller = TelaConsultasController.getInstance(manager);
+        startComponents();
         setLocationRelativeTo(null);
         setResizable(true);
         setVisible(true);
@@ -28,11 +31,11 @@ public class TelaConsultas extends javax.swing.JFrame {
         
     }
     
-    private void iniciaComponentes(){
-        List<String> procedures = telaConsultasController.getExistingProcedures();
+    private void startComponents(){
+        List<String> procedures = controller.getProcedures();
         ComboBox.load(comboBox_procedures, procedures, false);
-        List<String> tabelas = telaConsultasController.getTablesNames();
-        ComboBox.load(comboBox_tabelas, tabelas, false);
+        List<String> tables = controller.getTablesNames();
+        ComboBox.load(comboBox_tabelas, tables, false);
         area_texto.setText("Exemplo de consulta:\nSELECT * FROM tableX");
         area_texto.setEnabled(false);
         comboBox_procedures.setEnabled(false); 
@@ -196,23 +199,33 @@ public class TelaConsultas extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void botao_consultarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_botao_consultarActionPerformed
-        ResultSet resultQuery;
+        ResultSet resultQuery = null;
+        boolean load = true;
         try {
-            if (tipoConsulta == TipoConsulta.INSERIR_COMANDO) {
-                resultQuery = telaConsultasController.getResultSet(area_texto.getText());
-            } else if (tipoConsulta == TipoConsulta.PROCEDURES) {
-                resultQuery = telaConsultasController.getResultProcedure(comboBox_procedures.getSelectedItem().toString());
-            } else {
-                resultQuery = telaConsultasController.getResultQuery(comboBox_tabelas.getSelectedItem().toString());
+            switch (queryType) {
+                case INSERT_QUERY:
+                    resultQuery = controller.getResultSet(area_texto.getText());
+                    break;
+                case CONSULT_PROCEDURES:
+                    Object obj = comboBox_procedures.getSelectedItem();
+                    if(obj != null){
+                        resultQuery = controller.getResultProcedure(obj.toString());
+                    }else{
+                        OptionPane.showWarnDialog("AVISO", "SELECIONE UM PROCEDIMENTO");
+                        load = false;
+                    }
+                    break;
+                case CONSULT_TABLES:
+                    resultQuery = controller.getResultQuery(comboBox_tabelas.getSelectedItem().toString());
+                    break;
             }
-            TableModel.load(tabela, resultQuery);
-        } catch (Exception e) {
+            if(load){
+                TableModel.load(tabela, resultQuery);
+            }
+        } catch (SQLException e) {
             String errorMessage = "Ocorreu um erro ao processar a consulta.\nVerifique a query submetida.";
-            if (SystemMessages.infoSelectMessage(errorMessage) == 1) {
-                Dialog dialog = new Dialog(this, true);
-                dialog.setLabelTitle(SystemMessages.QUERY_ERROR.getTitle());
-                dialog.setLabelMessage(SystemMessages.QUERY_ERROR.getMessage());
-                dialog.setVisible(true);
+            if (OptionPane.showSelectDialog(errorMessage) == 1) {
+                createDialog();
             }
         }
     }//GEN-LAST:event_botao_consultarActionPerformed
@@ -221,29 +234,33 @@ public class TelaConsultas extends javax.swing.JFrame {
         area_texto.setEnabled(true);
         comboBox_procedures.setEnabled(false);
         comboBox_tabelas.setEnabled(false);
-        tipoConsulta = TipoConsulta.INSERIR_COMANDO;
+        queryType = QueryType.INSERT_QUERY;
     }//GEN-LAST:event_radioButton_inserirComandoActionPerformed
 
     private void radioButton_proceduresActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_radioButton_proceduresActionPerformed
         area_texto.setEnabled(false);
         comboBox_procedures.setEnabled(true);
         comboBox_tabelas.setEnabled(false);
-        tipoConsulta = TipoConsulta.PROCEDURES;
+        queryType = QueryType.CONSULT_PROCEDURES;
     }//GEN-LAST:event_radioButton_proceduresActionPerformed
 
     private void radioButton_tabelasActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_radioButton_tabelasActionPerformed
         area_texto.setEnabled(false);
         comboBox_procedures.setEnabled(false);
         comboBox_tabelas.setEnabled(true);
-        tipoConsulta = TipoConsulta.TABELAS;
+        queryType = QueryType.CONSULT_TABLES;
     }//GEN-LAST:event_radioButton_tabelasActionPerformed
 
     private void botao_infoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_botao_infoActionPerformed
+        createDialog();
+    }//GEN-LAST:event_botao_infoActionPerformed
+    
+    private void createDialog(){
         Dialog dialog = new Dialog(this, true);
         dialog.setLabelTitle(SystemMessages.QUERY_ERROR.getTitle());
         dialog.setLabelMessage(SystemMessages.QUERY_ERROR.getMessage());
         dialog.setVisible(true);
-    }//GEN-LAST:event_botao_infoActionPerformed
+    }
     
     public static void main(String args[]) {
         try {

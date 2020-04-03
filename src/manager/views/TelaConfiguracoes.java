@@ -1,18 +1,18 @@
 package manager.views;
 
-import javax.swing.JOptionPane;
-import manager.system.Configuracoes;
+import manager.system.PreferencesManager;
+import manager.views.dialog.OptionPane;
 
 public class TelaConfiguracoes extends javax.swing.JFrame {
     
-    private Configuracoes configs = null;
-    private String user = "";
+    private PreferencesManager prefsManager = null;
+    private String currentUser = "";
     
-    public TelaConfiguracoes(Configuracoes configs, String user) {
+    public TelaConfiguracoes(PreferencesManager prefsManager, String currentUser) {
         initComponents();
-        this.configs = configs;
-        this.user = user;
-        iniciarComponentes();
+        this.prefsManager = prefsManager;
+        this.currentUser = currentUser;
+        startComponents();
         setLocationRelativeTo(null);
         setVisible(true);
         setResizable(false);
@@ -22,12 +22,12 @@ public class TelaConfiguracoes extends javax.swing.JFrame {
         
     }
     
-    private void iniciarComponentes(){
+    private void startComponents(){
         area_texto.setEnabled(false);
-        area_texto.setText(this.configs.getComandoPadrao());
-        label_user.setText(this.user);
-        checkBox1.setSelected(this.configs.checkBox1Marked());
-        checkBox2.setSelected(this.configs.checkBox2Marked());
+        area_texto.setText(this.prefsManager.getStandardCommand());
+        label_user.setText(this.currentUser);
+        checkBox1.setSelected(this.prefsManager.isClearTextArea());
+        checkBox2.setSelected(this.prefsManager.isMultiQueries());
     }
 
     @SuppressWarnings("unchecked")
@@ -150,10 +150,8 @@ public class TelaConfiguracoes extends javax.swing.JFrame {
     }//GEN-LAST:event_botao_voltarActionPerformed
 
     private void botao_salvarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_botao_salvarActionPerformed
-        configs.salvarConfigs(checkBox1.isSelected(), checkBox2.isSelected(), area_texto.getText());
-        area_texto.setText(configs.getComandoPadrao());
-        area_texto.setEnabled(false);
-        JOptionPane.showMessageDialog(null, "Configurações Salvas!", "", JOptionPane.INFORMATION_MESSAGE);
+        prefsManager.savePreferences(checkBox1.isSelected(), checkBox2.isSelected(), area_texto.getText());
+        OptionPane.showInfoDialog("", "Configurações Salvas!");
         dispose();
     }//GEN-LAST:event_botao_salvarActionPerformed
 

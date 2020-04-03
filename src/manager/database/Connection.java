@@ -2,29 +2,33 @@ package manager.database;
 
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import manager.util.Log;
+import org.apache.log4j.Logger;
 
 public class Connection {
+    
+    private static final Logger LOG = Logger.getLogger(Connection.class);
 
-    private static Connection conexao;
+    private static Connection con;
     private java.sql.Connection connection = null;
 
-    private Connection(String IP, String BD, String login, String senha) throws Exception {
-        connection = getConnection(IP, BD, login, senha);
+    private Connection(String host, String database, String username, String password) throws SQLException {
+        connection = getConnection(host, database, username, password);
     }
 
-    public static Connection getInstance(String IP, String bd, String login, String senha) throws Exception {
-        if (conexao == null) {
-            conexao = new Connection(IP, bd, login, senha);
+    public static Connection getInstance(String host, String database, String username, String password) throws SQLException {
+        if (con == null) {
+            con = new Connection(host, database, username, password);
         }
-        return conexao;
+        return con;
     }
 
-    private java.sql.Connection getConnection(String IP, String BD, String login, String senha) throws Exception {
+    private java.sql.Connection getConnection(String host, String database, String username, String password) throws SQLException {
         try {
-            String local = String.format("jdbc:mysql://%s/%s", IP, BD);
-            return DriverManager.getConnection(local, login, senha);
+            String url = String.format("jdbc:mysql://%s/%s", host, database);
+            return DriverManager.getConnection(url, username, password);
         } catch (SQLException e) {
-            throw new Exception("ERRO AO CONECTAR!");
+            throw new SQLException("ERRO AO CONECTAR!");
         }
     }
     
@@ -32,13 +36,13 @@ public class Connection {
         return this.connection;
     }
 
-    public void fecharConexao() {
+    public void close() {
         try {
             connection.close();
-            conexao = null;
+            con = null;
         } catch (SQLException e) {
-            //adicionar no arquivo de log
-            throw new RuntimeException("ERRO! Path: Conexao.fecharConexao()");
+            String path = "manager.database.Connection.close()";
+            Log.saveErrorLog(LOG, e, path);
         }
     }
 }
